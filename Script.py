@@ -5,6 +5,7 @@ import pyzipper
 from tkinter import filedialog
 
 import PyPDF2 as ppdf
+import pypdf as old_ppdf
 import pdf2docx as cv
 import docx2pdf as ccv
 import win32_setctime as wsc
@@ -188,6 +189,39 @@ def merger():
             with open(terminal_path, "wb") as f:
                 writer.write(f)
 
+def compressor():
+    is_pdf, source_path = open_check_pdf()
+    if is_pdf:
+        print("Выберите желаемую степень сжатия (1-9):")
+        level = input()
+        if level.isdigit():
+            if 1 <= int(level) <= 9:
+                document = old_ppdf.PdfReader(source_path)
+                writer = old_ppdf.PdfWriter()
+                source.wm_deiconify()
+                terminal_path = filedialog.asksaveasfilename(title="Введите название итогового файла",
+                                                             defaultextension=".pdf")
+                source.withdraw()
+                total_count = len(document.pages)
+                quality = int((10-int(level))/9*100)
+                print(quality)
+                print(f"В работе страница 0/{total_count}")
+                page_count = 1
+                for page in document.pages:
+                    writer.add_page(page)
+                for page in writer.pages:
+                    print(f"В работе страница {page_count}/{total_count}")
+                    page.compress_content_streams(level=int(level))
+                    for img in page.images:
+                        img.replace(img.image, quality=quality)
+                    page_count += 1
+                with open(terminal_path, "wb") as f:
+                    writer.write(f)
+            else:
+                print("Ошибка ввода! Степень сжатия должна быть числом в диапазоне от 1 до 9")
+        else:
+            print("Ошибка ввода! Степень сжатия должна быть числом")
+
 def pdf2docx():
     is_pdf, source_path = open_check_pdf()
     if is_pdf:
@@ -308,14 +342,15 @@ if __name__ == "__main__":
         print("1. Разбить файл pdf на отдельные страницы")
         print("2. Разбить файл pdf по диапазонам")
         print("3. Объединить файлы pdf")
-        print("4. Преобразовать из pdf в docx")
-        print("5. Преобразовать docx в pdf")
-        print("6. Изменить дату и время создания pdf файла")
-        print("7. Изменить дату и время изменения pdf файла")
-        print("8. Создание запороленного zip архива")
-        print("9. Создание набора запороленных zip архивов")
-        print("10. Извлечение данных из запороленного zip архива")
-        print("11. Выйти из программы")
+        print("4. Сжать файл pdf")
+        print("5. Преобразовать из pdf в docx")
+        print("6. Преобразовать docx в pdf")
+        print("7. Изменить дату и время создания pdf файла")
+        print("8. Изменить дату и время изменения pdf файла")
+        print("9. Создание запороленного zip архива")
+        print("10. Создание набора запороленных zip архивов")
+        print("11. Извлечение данных из запороленного zip архива")
+        print("12. Выйти из программы")
         option = input()
         match option:
             case "1":
@@ -325,20 +360,22 @@ if __name__ == "__main__":
             case "3":
                 merger()
             case "4":
-                pdf2docx()
+                compressor()
             case "5":
-                docx2pdf()
+                pdf2docx()
             case "6":
-                mod_created_dt()
+                docx2pdf()
             case "7":
-                mod_mod_dt()
+                mod_created_dt()
             case "8":
-                create_protected_archive("", "", 0)
+                mod_mod_dt()
             case "9":
-                create_protected_archives()
+                create_protected_archive("", "", 0)
             case "10":
-                open_protected_archive()
+                create_protected_archives()
             case "11":
+                open_protected_archive()
+            case "12":
                 exit_flag = True
                 break
             case _:
