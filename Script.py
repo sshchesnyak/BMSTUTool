@@ -1,6 +1,7 @@
 import datetime
 import os
 import tkinter
+import pyzipper
 from tkinter import filedialog
 
 import PyPDF2 as ppdf
@@ -29,6 +30,16 @@ def open_check_docx():
         return True, source_path
     else:
         print("Ошибка! Выбранный файл не имеет расширения docx")
+        return False, source_path
+
+def open_check_zip():
+    source.wm_deiconify()
+    source_path = filedialog.askopenfilename(title="Выберите исходный zip файл")
+    source.withdraw()
+    if source_path.endswith(".zip"):
+        return True, source_path
+    else:
+        print("Ошибка! Выбранный файл не имеет расширения zip")
         return False, source_path
 
 def open_check_pdfs():
@@ -213,6 +224,82 @@ def mod_mod_dt():
         if check_modified:
             os.utime(source_path, (time_modified, time_modified))
 
+def create_protected_archive(default_pwd, default_dir, fold_id):
+    source.wm_deiconify()
+    source_folder = filedialog.askdirectory(title="Выберите архивируемую директорию", mustexist=True)
+    if default_dir != "":
+        terminal_folder = f"{default_dir}/{os.path.basename(source_folder)}{fold_id}.zip"
+    else:
+        terminal_folder = filedialog.asksaveasfilename(title="Введите название итогового файла", defaultextension=".zip")
+    source.withdraw()
+    if default_pwd != "":
+        pwd = default_pwd
+    else:
+        print("Введите пароль для шифрования: ")
+        pwd = input()
+    if terminal_folder != "":
+        if pwd != "":
+            with pyzipper.AESZipFile(terminal_folder, "w", compression=pyzipper.ZIP_DEFLATED, encryption=pyzipper.WZ_AES) as zf:
+                zf.pwd = pwd.encode("utf-8")
+                for root, dirs, files in os.walk(source_folder):
+                    for filename in files:
+                        filepath = os.path.join(root, filename)
+                        archive_path = os.path.relpath(filepath, source_folder)
+                        zf.write(filepath, archive_path)
+        else:
+            print("Ошибка ввода! Пароль не может быть пустым")
+    else:
+        print("Ошибка ввода! Введенная директория не существует")
+
+def create_protected_archives():
+    terminate = False
+    index = 0
+    pwd = ""
+    terminal_folder = ""
+    print("Вы хотите, чтобы все созданные архивы были защищены одним паролем? (y/n)")
+    one_pwd = input()
+    if one_pwd == "y":
+        print("Введите пароль для шифрования: ")
+        pwd = input()
+    print("Вы хотите, чтобы все созданные архивы были размещены в одной директории? (y/n)")
+    one_dir = input()
+    if one_dir == "y":
+        source.wm_deiconify()
+        terminal_folder = filedialog.askdirectory(title="Выберите местоположение итоговых файлов", mustexist=True)
+        source.withdraw()
+    while not terminate:
+        create_protected_archive(pwd, terminal_folder, index)
+        print("Желаете создать еще один архив? (y/n)")
+        ans = input()
+        if ans == "y":
+            index += 1
+        else:
+            terminate = True
+
+def open_protected_archive():
+    is_zip, source_path = open_check_zip()
+    if is_zip:
+        source.wm_deiconify()
+        terminal_folder = filedialog.askdirectory(title="Выберите местоположение итоговых файлов", mustexist=True)
+        source.withdraw()
+        pwd_correct = False
+        while not pwd_correct:
+            print("Введите пароль от архива: ")
+            pwd = input()
+            try:
+                with pyzipper.AESZipFile(source_path) as zf:
+                    zf.pwd = pwd.encode("utf-8")
+                    zf.extractall(terminal_folder)
+                    pwd_correct = True
+            except:
+                print("Пароль указан не верно. Хотите попробовать еще раз? (y/n)")
+                choice = input()
+                if choice == "y":
+                    pwd_correct = False
+                else:
+                    pwd_correct = True
+
+
 if __name__ == "__main__":
     exit_flag = False
     while not exit_flag:
@@ -225,7 +312,10 @@ if __name__ == "__main__":
         print("5. Преобразовать docx в pdf")
         print("6. Изменить дату и время создания pdf файла")
         print("7. Изменить дату и время изменения pdf файла")
-        print("8. Выйти из программы")
+        print("8. Создание запороленного zip архива")
+        print("9. Создание набора запороленных zip архивов")
+        print("10. Извлечение данных из запороленного zip архива")
+        print("11. Выйти из программы")
         option = input()
         match option:
             case "1":
@@ -243,6 +333,12 @@ if __name__ == "__main__":
             case "7":
                 mod_mod_dt()
             case "8":
+                create_protected_archive("", "", 0)
+            case "9":
+                create_protected_archives()
+            case "10":
+                open_protected_archive()
+            case "11":
                 exit_flag = True
                 break
             case _:
